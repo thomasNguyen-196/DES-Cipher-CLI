@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "des-cli-tool"
+version = "1.0.0"
+authors = [
+  { name="Thomas Spielberg", email="thomasspielberg5@gmail.com" },
+]
+description = "A simple DES Cipher CLI tool."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "colorama==0.4.6",
+    "pyfiglet==1.0.4",
+    "pyperclip==1.10.0",
+]
+
+[project.scripts]
+des = "des_cipher.cli:main"
