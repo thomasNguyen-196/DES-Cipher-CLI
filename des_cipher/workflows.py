@@ -54,31 +54,66 @@ def _read_key() -> str:
         print(ui.FG["red"] + "Key không được để trống. Thử lại." + ui.RESET)
 
 
+def _read_mode() -> str:
+    """Prompts for mode: ecb or cfb."""
+    while True:
+        mode = ui.prompt("Mode (ecb/cfb) [ecb]: ").strip().lower() or "ecb"
+        if mode in ("ecb", "cfb"):
+            return mode
+        print(ui.FG["red"] + "Mode không hợp lệ, chọn ecb hoặc cfb." + ui.RESET)
+
+
+def _read_iv(optional: bool = False) -> Optional[str]:
+    """
+    Prompts for IV (16 hex hoặc 8 ký tự). When optional is True, empty IV returns None (auto-gen).
+    """
+    while True:
+        iv = ui.prompt("IV (16 hex hoặc 8 ký tự, bỏ trống để tự sinh): ").strip()
+        if iv:
+            return iv
+        if optional:
+            return None
+        print(ui.FG["red"] + "CFB cần IV. Thử lại." + ui.RESET)
+
+
 def encrypt_flow():
     """Workflow for encrypting a message."""
     ui.clear()
     ui.banner()
-    ui.boxed("ENCRYPT", "Nhập văn bản cần mã hóa và khóa DES.")
+    ui.boxed("ENCRYPT", "Nhập văn bản cần mã hóa và khóa DES. Chọn mode (ecb/cfb).")
     plaintext = _read_text_input("Plaintext")
     key = _read_key()
-    ciphertext = cipher.des_encrypt(plaintext, key)
-    ui.boxed("KẾT QUẢ", ciphertext)
-    post_output_actions(ciphertext, key=key, label="Ciphertext")
+    mode = _read_mode()
+    iv = _read_iv(optional=True) if mode == "cfb" else None
+    cipher_hex, iv_hex = cipher.des_encrypt(plaintext, key, mode=mode, iv=iv)
+
+    title = f"Ciphertext ({mode.upper()})"
+    if iv_hex:
+        print(ui.FG["cyan"] + f"IV (hex): {iv_hex}" + ui.RESET)
+    ui.boxed(title, cipher_hex)
+    post_output_actions(cipher_hex, key=key, iv=iv_hex, label=title)
 
 
 def decrypt_flow():
     """Workflow for decrypting a message."""
     ui.clear()
     ui.banner()
-    ui.boxed("DECRYPT", "Nhập ciphertext và khóa DES.")
+    ui.boxed("DECRYPT", "Nhập ciphertext, chọn mode (ecb/cfb) và cung cấp IV nếu cần.")
     ciphertext = _read_text_input("Ciphertext")
     key = _read_key()
-    plaintext = cipher.des_decrypt(ciphertext, key)
+    mode = _read_mode()
+    iv = _read_iv(optional=False) if mode == "cfb" else None
+    plaintext = cipher.des_decrypt(ciphertext, key, mode=mode, iv=iv)
     ui.boxed("KẾT QUẢ", plaintext)
-    post_output_actions(plaintext, key=key, label="Plaintext")
+    post_output_actions(plaintext, key=key, iv=iv, label=f"Plaintext ({mode.upper()})")
 
 
-def post_output_actions(text: str, key: Optional[str] = None, label: str = ""):
+def post_output_actions(
+    text: str,
+    key: Optional[str] = None,
+    iv: Optional[str] = None,
+    label: str = "",
+):
     """
     Handles actions after a result is generated (copy, save, etc.).
     When saving to file, the key (if provided) is written alongside the output.
@@ -103,6 +138,8 @@ def post_output_actions(text: str, key: Optional[str] = None, label: str = ""):
             if label:
                 header_parts.append(label)
             header_parts.append(f"Key: {key}")
+            if iv:
+                header_parts.append(f"IV: {iv}")
             header = " — ".join(header_parts)
             content = f"{header}\n\n{text}"
         try:
@@ -122,7 +159,9 @@ def show_help():
     ui.banner()
     help_text = (
         "Hướng dẫn ngắn:\n"
-        "- Mã hóa/giải mã bằng thuật toán DES (đang xây dựng, placeholder cho logic DES).\n"
+        "- Mã hóa/giải mã bằng thuật toán DES với mode ecb hoặc cfb.\n"
+        "- ECB dùng PKCS#7 padding và trả ciphertext hex.\n"
+        "- CFB cần IV 8 byte (16 hex hoặc 8 ký tự); encrypt trả về IV và ciphertext tách biệt (hex), decrypt yêu cầu IV nhập thủ công. CFB không cần padding và hỗ trợ chuỗi dài bất kỳ.\n"
         "- Văn bản dài có thể đọc từ file (chọn 'f') hoặc pipe: cat file.txt | des\n"
         "- Sau khi có kết quả, bạn có thể copy hoặc lưu file.\n"
         "- Nếu muốn giao diện xịn hơn: pip install pyfiglet colorama pyperclip\n"
