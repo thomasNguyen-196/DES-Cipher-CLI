@@ -166,8 +166,8 @@ def _sbox_substitution(bits48: List[int]) -> List[int]:
     out = []
     for i in range(8):
         block = bits48[i * 6:(i + 1) * 6]
-        row = (block[0] << 1) | block[5]
-        col = (block[1] << 3) | (block[2] << 2) | (block[3] << 1) | block[4]
+        row = (block[0] << 1) | block[5] # first and last bits form the row
+        col = (block[1] << 3) | (block[2] << 2) | (block[3] << 1) | block[4] # middle 4 bits form the column
         val = S_BOXES[i][row * 16 + col]
         out.extend([(val >> shift) & 1 for shift in (3, 2, 1, 0)])
     return out
